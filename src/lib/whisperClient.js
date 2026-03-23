@@ -14,7 +14,6 @@ export async function transcribeAudio(audioBlob, previousContext = '') {
   const file = new File([audioBlob], 'audio.webm', { type: audioBlob.type });
   formData.append('file', file);
   formData.append('model', 'whisper-large-v3-turbo');
-  formData.append('language', 'auto');
   formData.append('response_format', 'json');
 
   // Pass previous context so Whisper maintains continuity between chunks
