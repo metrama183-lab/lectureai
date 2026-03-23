@@ -137,6 +137,116 @@ body {
   font-weight: 400;
 }
 
+/* ── Header Controls Group ─────────────────────────────────── */
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Language selector */
+.language-selector {
+  display: flex;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.lang-btn {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition);
+  letter-spacing: 0.5px;
+}
+
+.lang-btn:not(:last-child) {
+  border-right: 1px solid var(--border-light);
+}
+
+.lang-btn:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: var(--surface-1);
+}
+
+.lang-btn.active {
+  color: var(--accent-light);
+  background: var(--accent-bg);
+}
+
+.lang-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Upload button */
+.upload-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.upload-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.upload-btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: var(--accent);
+  color: var(--accent-light);
+  box-shadow: var(--shadow-glow);
+  transform: translateY(-1px);
+}
+
+.upload-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Transcript Start Button ───────────────────────────────── */
+.transcript-start-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 28px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-xl);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.1));
+  color: var(--accent-light);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  transition: all var(--transition);
+  margin-top: 8px;
+}
+
+.transcript-start-btn svg {
+  width: 22px;
+  height: 22px;
+}
+
+.transcript-start-btn:hover {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(139, 92, 246, 0.2));
+  box-shadow: 0 0 40px var(--accent-glow);
+  transform: translateY(-2px) scale(1.02);
+  border-color: var(--accent-light);
+}
+
 /* ── Record Button ──────────────────────────────────────────── */
 .record-button {
   display: flex;
@@ -515,39 +625,114 @@ body {
   display: none;
 }
 
-/* Custom concept node */
-.concept-node {
-  background: var(--bg-glass);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(99, 102, 241, 0.25);
-  border-radius: var(--radius-md);
-  padding: 10px 18px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.3), 0 0 20px rgba(99, 102, 241, 0.1);
-  transition: all 0.3s ease;
-  animation: nodeAppear 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+/* Custom concept node — premium design */
+.concept-node-wrapper {
+  position: relative;
   cursor: grab;
+  animation: nodeAppear 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
-.concept-node:hover {
-  border-color: var(--accent-light);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.3), 0 0 30px rgba(99, 102, 241, 0.25);
-  transform: scale(1.05);
+/* Glow aura behind the node */
+.concept-node-glow {
+  position: absolute;
+  inset: -8px;
+  border-radius: 20px;
+  background: radial-gradient(ellipse at center, var(--node-glow, rgba(99,102,241,0.25)) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+  filter: blur(12px);
+}
+
+.concept-node-wrapper:hover .concept-node-glow {
+  opacity: 1;
+}
+
+.concept-node {
+  position: relative;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1.5px solid var(--node-border, rgba(99, 102, 241, 0.4));
+  border-radius: 14px;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.concept-node-wrapper:hover .concept-node {
+  border-color: var(--node-ring, #6366f1);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 0 30px var(--node-glow, rgba(99,102,241,0.3)),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transform: translateY(-2px) scale(1.03);
+}
+
+/* Accent dot */
+.concept-node-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 8px var(--node-glow, rgba(99,102,241,0.4));
+  animation: dotPulse 3s ease-in-out infinite;
+}
+
+@keyframes dotPulse {
+  0%, 100% { opacity: 0.7; box-shadow: 0 0 6px var(--node-glow, rgba(99,102,241,0.3)); }
+  50%      { opacity: 1;   box-shadow: 0 0 14px var(--node-glow, rgba(99,102,241,0.6)); }
 }
 
 .concept-node-label {
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-primary);
   white-space: nowrap;
-  max-width: 180px;
+  max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
+  letter-spacing: 0.2px;
+}
+
+/* Connection count badge */
+.concept-node-badge {
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 1px solid;
+  flex-shrink: 0;
+  padding: 0 5px;
+}
+
+/* Invisible handles — functional but hidden */
+.concept-handle {
+  width: 8px !important;
+  height: 8px !important;
+  background: var(--node-ring, #6366f1) !important;
+  border: 2px solid rgba(15, 23, 42, 0.9) !important;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.concept-node-wrapper:hover .concept-handle {
+  opacity: 1;
 }
 
 @keyframes nodeAppear {
-  from { transform: scale(0); opacity: 0; }
-  to   { transform: scale(1); opacity: 1; }
+  from { transform: scale(0.3); opacity: 0; filter: blur(8px); }
+  to   { transform: scale(1); opacity: 1; filter: blur(0); }
 }
 
 /* Graph empty state */

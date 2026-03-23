@@ -8,6 +8,10 @@ const useLectureStore = create((set, get) => ({
   status: 'idle',
   setStatus: (status) => set({ status }),
 
+  // Language: 'it' or 'en'
+  language: 'it',
+  setLanguage: (language) => set({ language }),
+
   // Timestamp when recording started (for live timer)
   recordingStartedAt: null,
   setRecordingStartedAt: (ts) => set({ recordingStartedAt: ts }),

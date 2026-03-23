@@ -88,7 +88,7 @@ export default function RecordButton() {
         pendingTranscriptionsRef.current++;
         try {
           const store = useLectureStore.getState();
-          const text = await transcribeAudio(blob, store.transcript);
+          const text = await transcribeAudio(blob, store.transcript, store.language);
           if (text && text.trim()) {
             appendTranscript(text.trim());
           }

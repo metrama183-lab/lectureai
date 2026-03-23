@@ -5,15 +5,17 @@
  * Transcribe an audio Blob via the Groq Whisper proxy
  * @param {Blob} audioBlob - Audio blob from MediaRecorder
  * @param {string} previousContext - Previous transcript text for Whisper prompt context
+ * @param {string} language - Language code ('it' or 'en')
  * @returns {Promise<string>} Transcribed text
  */
-export async function transcribeAudio(audioBlob, previousContext = '') {
+export async function transcribeAudio(audioBlob, previousContext = '', language = 'it') {
   const formData = new FormData();
 
   // Whisper expects a file with a proper name and extension
   const file = new File([audioBlob], 'audio.webm', { type: audioBlob.type });
   formData.append('file', file);
   formData.append('model', 'whisper-large-v3-turbo');
+  formData.append('language', language);
   formData.append('response_format', 'json');
 
   // Pass previous context so Whisper maintains continuity between chunks
