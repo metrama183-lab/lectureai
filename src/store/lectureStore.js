@@ -90,7 +90,9 @@ const useLectureStore = create((set, get) => ({
 
   // Summary data
   summary: null, // { keyPoints: [], questions: [] }
-  setSummary: (summary) => set({ summary }),
+  showSummary: false,
+  setSummary: (summary) => set({ summary, showSummary: true }),
+  setShowSummary: (show) => set({ showSummary: show }),
 
   // Reset everything
   reset: () =>
@@ -101,6 +103,7 @@ const useLectureStore = create((set, get) => ({
       nodes: [],
       edges: [],
       summary: null,
+      showSummary: false,
       recordingStartedAt: null,
     }),
 }));

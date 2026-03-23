@@ -4,8 +4,9 @@ import useLectureStore from '../store/lectureStore';
 
 export default function SummaryPanel() {
   const summary = useLectureStore((s) => s.summary);
+  const showSummary = useLectureStore((s) => s.showSummary);
 
-  if (!summary) return null;
+  if (!summary || !showSummary) return null;
 
   return (
     <div className="summary-overlay">
@@ -19,7 +20,7 @@ export default function SummaryPanel() {
           <h2>Lecture Summary</h2>
           <button
             className="summary-close"
-            onClick={() => useLectureStore.getState().setSummary(null)}
+            onClick={() => useLectureStore.getState().setShowSummary(false)}
             title="Close summary"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
