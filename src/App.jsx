@@ -14,19 +14,20 @@ import { transcribeAudio } from './lib/whisperClient';
 import { analyzeText, generateSummary } from './lib/mistralClient';
 import { processDelta } from './lib/graphBuilder';
 
+// Target sample rate for Whisper — 16kHz mono keeps chunks small (~800KB per 25s)
+const TARGET_SAMPLE_RATE = 16000;
+const CHUNK_DURATION_S = 25;
+
 export default function App() {
   const language = useLectureStore((s) => s.language);
   const setLanguage = useLectureStore((s) => s.setLanguage);
   const status = useLectureStore((s) => s.status);
-  const appendTranscript = useLectureStore((s) => s.appendTranscript);
   const addToast = useToastStore((s) => s.addToast);
   const fileInputRef = useRef(null);
 
   const handleAudioUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    // Reset file input for re-upload
     e.target.value = '';
 
     const store = useLectureStore.getState();
@@ -36,37 +37,43 @@ export default function App() {
     }
 
     useLectureStore.getState().setStatus('processing');
-    addToast('info', `Processing ${file.name}...`);
 
     try {
-      // Split large files into ~25s chunks (Whisper has a limit)
-      const CHUNK_DURATION_MS = 25000;
+      // Decode the full audio file
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
       const arrayBuffer = await file.arrayBuffer();
       const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-      const totalDuration = audioBuffer.duration * 1000;
-      const chunks = Math.ceil(totalDuration / CHUNK_DURATION_MS);
+      await audioContext.close();
 
-      for (let i = 0; i < chunks; i++) {
-        const startSec = (i * CHUNK_DURATION_MS) / 1000;
-        const endSec = Math.min(((i + 1) * CHUNK_DURATION_MS) / 1000, audioBuffer.duration);
+      // Downsample to 16kHz mono via OfflineAudioContext
+      const monoBuffer = await downsampleToMono(audioBuffer, TARGET_SAMPLE_RATE);
 
-        // Create a new buffer for this chunk
-        const chunkLength = Math.ceil((endSec - startSec) * audioBuffer.sampleRate);
-        const chunkBuffer = audioContext.createBuffer(
-          audioBuffer.numberOfChannels,
-          chunkLength,
-          audioBuffer.sampleRate
+      const totalChunks = Math.ceil(monoBuffer.duration / CHUNK_DURATION_S);
+      addToast('info', `Processing ${file.name} — ${totalChunks} chunks (${Math.round(monoBuffer.duration / 60)}min)`);
+
+      // Process each chunk sequentially
+      for (let i = 0; i < totalChunks; i++) {
+        const startSample = Math.floor(i * CHUNK_DURATION_S * monoBuffer.sampleRate);
+        const endSample = Math.min(
+          Math.floor((i + 1) * CHUNK_DURATION_S * monoBuffer.sampleRate),
+          monoBuffer.length
         );
+        const chunkLength = endSample - startSample;
 
-        for (let ch = 0; ch < audioBuffer.numberOfChannels; ch++) {
-          const channelData = audioBuffer.getChannelData(ch);
-          const startSample = Math.floor(startSec * audioBuffer.sampleRate);
-          chunkBuffer.copyToChannel(channelData.slice(startSample, startSample + chunkLength), ch);
-        }
+        // Create a single-chunk OfflineAudioContext to extract the buffer
+        const chunkCtx = new OfflineAudioContext(1, chunkLength, monoBuffer.sampleRate);
+        const chunkBuffer = chunkCtx.createBuffer(1, chunkLength, monoBuffer.sampleRate);
+        chunkBuffer.copyToChannel(
+          monoBuffer.getChannelData(0).slice(startSample, endSample),
+          0
+        );
+        await chunkCtx.startRendering();
 
-        // Encode chunk to WAV blob
-        const wavBlob = audioBufferToWav(chunkBuffer);
+        // Encode to WAV (mono 16kHz 16-bit = ~800KB per 25s chunk)
+        const wavBlob = encodeWav(chunkBuffer);
+
+        addToast('info', `Transcribing chunk ${i + 1}/${totalChunks}...`);
+
         const currentStore = useLectureStore.getState();
         const text = await transcribeAudio(wavBlob, currentStore.transcript, currentStore.language);
         if (text && text.trim()) {
@@ -74,12 +81,11 @@ export default function App() {
         }
       }
 
-      await audioContext.close();
-
-      // Run analysis on the uploaded transcript
+      // Run analysis on the complete transcript
       const finalStore = useLectureStore.getState();
       const newText = finalStore.getNewText();
       if (newText && newText.length >= 40) {
+        addToast('info', 'Analyzing concepts...');
         const delta = await analyzeText(newText, finalStore.nodes, finalStore.edges, finalStore.language);
         if (delta.nodes_to_add.length > 0 || delta.edges_to_add.length > 0) {
           const s = useLectureStore.getState();
@@ -91,6 +97,7 @@ export default function App() {
       // Generate summary if enough text
       const afterAnalysis = useLectureStore.getState();
       if (afterAnalysis.transcript.length >= 100) {
+        addToast('info', 'Generating summary...');
         const summary = await generateSummary(afterAnalysis.transcript, afterAnalysis.language);
         useLectureStore.getState().setSummary(summary);
         addToast('success', 'Audio processed — summary ready!');
@@ -202,47 +209,71 @@ export default function App() {
   );
 }
 
-/** Convert AudioBuffer to WAV Blob */
-function audioBufferToWav(buffer) {
-  const numChannels = buffer.numberOfChannels;
-  const sampleRate = buffer.sampleRate;
-  const format = 1; // PCM
-  const bitDepth = 16;
-  const bytesPerSample = bitDepth / 8;
-  const blockAlign = numChannels * bytesPerSample;
+/**
+ * Downsample and mix to mono using OfflineAudioContext.
+ * This properly resamples (no aliasing) and merges channels.
+ */
+async function downsampleToMono(audioBuffer, targetRate) {
+  const duration = audioBuffer.duration;
+  const targetLength = Math.ceil(duration * targetRate);
+  const offlineCtx = new OfflineAudioContext(1, targetLength, targetRate);
+  const source = offlineCtx.createBufferSource();
+  source.buffer = audioBuffer;
+  source.connect(offlineCtx.destination);
+  source.start(0);
+  return await offlineCtx.startRendering();
+}
 
+/**
+ * Encode a mono AudioBuffer to a WAV Blob (16-bit PCM).
+ * Always outputs mono regardless of input channel count.
+ */
+function encodeWav(buffer) {
+  const sampleRate = buffer.sampleRate;
   const samples = buffer.getChannelData(0);
-  const dataLength = samples.length * blockAlign;
-  const bufferLength = 44 + dataLength;
-  const arrayBuffer = new ArrayBuffer(bufferLength);
+  const numSamples = samples.length;
+  const bytesPerSample = 2; // 16-bit
+  const dataLength = numSamples * bytesPerSample;
+  const headerLength = 44;
+  const totalLength = headerLength + dataLength;
+
+  const arrayBuffer = new ArrayBuffer(totalLength);
   const view = new DataView(arrayBuffer);
 
-  // WAV header
-  const writeString = (offset, str) => {
-    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
-  };
+  // RIFF header
+  writeStr(view, 0, 'RIFF');
+  view.setUint32(4, totalLength - 8, true);
+  writeStr(view, 8, 'WAVE');
 
-  writeString(0, 'RIFF');
-  view.setUint32(4, bufferLength - 8, true);
-  writeString(8, 'WAVE');
-  writeString(12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, format, true);
-  view.setUint16(22, numChannels, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * blockAlign, true);
-  view.setUint16(32, blockAlign, true);
-  view.setUint16(34, bitDepth, true);
-  writeString(36, 'data');
+  // fmt chunk
+  writeStr(view, 12, 'fmt ');
+  view.setUint32(16, 16, true);        // chunk size
+  view.setUint16(20, 1, true);         // PCM format
+  view.setUint16(22, 1, true);         // mono
+  view.setUint32(24, sampleRate, true); // sample rate
+  view.setUint32(28, sampleRate * bytesPerSample, true); // byte rate
+  view.setUint16(32, bytesPerSample, true);              // block align
+  view.setUint16(34, 16, true);        // bits per sample
+
+  // data chunk
+  writeStr(view, 36, 'data');
   view.setUint32(40, dataLength, true);
 
-  let offset = 44;
-  for (let i = 0; i < samples.length; i++) {
+  // PCM samples
+  let offset = headerLength;
+  for (let i = 0; i < numSamples; i++) {
     const s = Math.max(-1, Math.min(1, samples[i]));
-    view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
-    offset += bytesPerSample;
+    view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+    offset += 2;
   }
 
   return new Blob([arrayBuffer], { type: 'audio/wav' });
 }
+
+function writeStr(view, offset, str) {
+  for (let i = 0; i < str.length; i++) {
+    view.setUint8(offset + i, str.charCodeAt(i));
+  }
+}
+
 
