@@ -2,6 +2,15 @@
 
 import useLectureStore from '../store/lectureStore';
 
+// Mistral may return items as strings or objects — normalize to string
+function itemText(item) {
+  if (typeof item === 'string') return item;
+  if (item && typeof item === 'object') {
+    return item.text || item.content || item.point || item.question || JSON.stringify(item);
+  }
+  return String(item);
+}
+
 export default function SummaryPanel() {
   const summary = useLectureStore((s) => s.summary);
   const showSummary = useLectureStore((s) => s.showSummary);
@@ -41,7 +50,7 @@ export default function SummaryPanel() {
                 {summary.keyPoints.map((point, i) => (
                   <li key={i} className="key-point" style={{ animationDelay: `${i * 0.08}s` }}>
                     <span className="key-point-marker">{i + 1}</span>
-                    <span className="key-point-text">{point}</span>
+                    <span className="key-point-text">{itemText(point)}</span>
                   </li>
                 ))}
               </ul>
@@ -57,7 +66,7 @@ export default function SummaryPanel() {
               <ul className="questions-list">
                 {summary.questions.map((question, i) => (
                   <li key={i} className="question-item" style={{ animationDelay: `${i * 0.08 + 0.3}s` }}>
-                    <span className="question-text">{question}</span>
+                    <span className="question-text">{itemText(question)}</span>
                   </li>
                 ))}
               </ul>

@@ -3,6 +3,14 @@
 import { useState } from 'react';
 import useLectureStore from '../store/lectureStore';
 
+function itemText(item) {
+  if (typeof item === 'string') return item;
+  if (item && typeof item === 'object') {
+    return item.text || item.content || item.point || item.question || JSON.stringify(item);
+  }
+  return String(item);
+}
+
 export default function ExportBar() {
   const transcript = useLectureStore((s) => s.transcript);
   const nodes = useLectureStore((s) => s.nodes);
@@ -46,14 +54,14 @@ export default function ExportBar() {
       if (summary.keyPoints?.length) {
         md += '### Key Points\n\n';
         summary.keyPoints.forEach((p, i) => {
-          md += `${i + 1}. ${p}\n`;
+          md += `${i + 1}. ${itemText(p)}\n`;
         });
         md += '\n';
       }
       if (summary.questions?.length) {
         md += '### Review Questions\n\n';
         summary.questions.forEach((q, i) => {
-          md += `${i + 1}. ${q}\n`;
+          md += `${i + 1}. ${itemText(q)}\n`;
         });
         md += '\n';
       }
@@ -157,7 +165,7 @@ export default function ExportBar() {
           pdf.setFont(undefined, 'normal');
           summary.keyPoints.forEach((p, i) => {
             if (y > 270) { pdf.addPage(); y = margin; }
-            const lines = pdf.splitTextToSize(`${i + 1}. ${p}`, contentWidth);
+            const lines = pdf.splitTextToSize(`${i + 1}. ${itemText(p)}`, contentWidth);
             lines.forEach((l) => {
               pdf.text(l, margin, y);
               y += 5;
@@ -176,7 +184,7 @@ export default function ExportBar() {
           pdf.setFont(undefined, 'normal');
           summary.questions.forEach((q, i) => {
             if (y > 270) { pdf.addPage(); y = margin; }
-            const lines = pdf.splitTextToSize(`${i + 1}. ${q}`, contentWidth);
+            const lines = pdf.splitTextToSize(`${i + 1}. ${itemText(q)}`, contentWidth);
             lines.forEach((l) => {
               pdf.text(l, margin, y);
               y += 5;
