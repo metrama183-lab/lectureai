@@ -86,7 +86,7 @@ New transcript text to analyze:
 Return ONLY the delta JSON with new nodes and edges to add.`;
 }
 
-async function callLLM(apiUrl, model, apiKey, messages, retryWithCerebras = true) {
+async function callLLM(apiUrl, model, apiKey, messages, retryWithCerebras = true, maxTokens = 2000) {
   const res = await fetch(apiUrl, {
     method: 'POST',
     headers: {
@@ -98,7 +98,7 @@ async function callLLM(apiUrl, model, apiKey, messages, retryWithCerebras = true
       messages,
       response_format: { type: 'json_object' },
       temperature: 0.3,
-      max_tokens: 2000,
+      max_tokens: maxTokens,
     }),
   });
 
@@ -157,9 +157,9 @@ export default async function handler(req, res) {
         { role: 'user', content: `Full lecture transcript:\n"${newText}"\n\nGenerate key points and review questions as JSON.` },
       ];
 
-      let result = await callLLM(MISTRAL_API_URL, MISTRAL_MODEL, mistralKey, messages, true);
+      let result = await callLLM(MISTRAL_API_URL, MISTRAL_MODEL, mistralKey, messages, true, 4000);
       if (result === null && cerebrasKey) {
-        result = await callLLM(CEREBRAS_API_URL, CEREBRAS_MODEL, cerebrasKey, messages, false);
+        result = await callLLM(CEREBRAS_API_URL, CEREBRAS_MODEL, cerebrasKey, messages, false, 4000);
       }
       if (result === null) {
         return res.status(429).json({ error: 'Rate limited — try again in a moment.' });
