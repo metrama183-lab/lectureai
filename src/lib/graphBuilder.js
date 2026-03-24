@@ -1,7 +1,7 @@
 // lib/graphBuilder.js — transforms { nodes_to_add, edges_to_add }
 // into positioned nodes using d3-force simulation
 
-import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide } from 'd3-force';
+import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide, forceX, forceY } from 'd3-force';
 
 /**
  * Run d3-force simulation on all nodes (existing + new) to compute positions.
@@ -39,14 +39,16 @@ export function computeLayout(allNodes, allEdges) {
 
   // Run force simulation synchronously
   const simulation = forceSimulation(simNodes)
-    .force('link', forceLink(simLinks).id((d) => d.id).distance(180).strength(0.4))
-    .force('charge', forceManyBody().strength(-400))
-    .force('center', forceCenter(400, 300))
-    .force('collide', forceCollide(80))
+    .force('link', forceLink(simLinks).id((d) => d.id).distance(280).strength(0.3))
+    .force('charge', forceManyBody().strength(-1200).distanceMax(800))
+    .force('center', forceCenter(400, 300).strength(0.05))
+    .force('x', forceX(400).strength(0.08))
+    .force('y', forceY(300).strength(0.08))
+    .force('collide', forceCollide(100))
     .stop();
 
-  // Run 120 ticks to reach near-equilibrium
-  for (let i = 0; i < 120; i++) {
+  // Run 200 ticks for better convergence with stronger forces
+  for (let i = 0; i < 200; i++) {
     simulation.tick();
   }
 

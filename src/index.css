@@ -604,6 +604,25 @@ body {
   stroke: rgba(99, 102, 241, 0.5);
 }
 
+/* Edge labels: hidden by default, visible on hover */
+.graph-canvas .react-flow__edge-text {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.graph-canvas .react-flow__edge:hover .react-flow__edge-text {
+  opacity: 1;
+}
+
+.graph-canvas .react-flow__edge-textbg {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.graph-canvas .react-flow__edge:hover .react-flow__edge-textbg {
+  opacity: 1;
+}
+
 .graph-canvas .react-flow__controls button {
   background: var(--bg-card) !important;
   border: 1px solid var(--border) !important;
@@ -695,9 +714,6 @@ body {
   font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
   letter-spacing: 0.2px;
 }
 

@@ -27,6 +27,8 @@ RULES:
 - Each node must have a unique "id" (lowercase, snake_case, descriptive) and a "label" (short, clear, max 4 words)
 - Each edge must have "source" and "target" (node ids) and a "label" (relationship description, max 4 words)
 - Do NOT create duplicate nodes — check existing nodes first
+- DEDUPLICATION: If a concept is the same as an existing node but with a slightly different name (e.g. "Giuseppe Parini" vs "Parini", or "Neoclassicismo" vs "Il Neoclassicismo"), do NOT create a new node — use the existing node's id instead.
+- TRANSCRIPTION ERRORS: The transcript may contain speech recognition errors. Correct obvious errors in node labels (e.g. "Virgilio Traccio" should be "Virgilio" if that's the intended reference). Do NOT create nodes from clearly garbled text.
 - If a new concept relates to an existing node, create an edge to that existing node's id
 - Keep labels concise and meaningful
 - Return valid JSON only, no text outside the JSON
@@ -51,18 +53,18 @@ function getSummaryPrompt(language) {
     : 'Write all key points and questions in English.';
 
   return `You are an expert academic summarizer. Given a full lecture transcript, generate:
-1. A list of key points (the most important concepts and takeaways)
-2. A list of probable exam/review questions a student should prepare for
+1. A list of key points — the most important concepts and takeaways from the lecture. Each point should be 2-4 sentences with context, not just a single line. Explain WHY a concept matters, its historical/theoretical context, and its connections to other concepts in the lecture.
+2. A list of review questions at graduated difficulty levels — from basic comprehension to critical analysis. Include 5-7 questions.
 
 ${langInstruction}
 
 Return valid JSON only:
 {
-  "keyPoints": ["point 1", "point 2", ...],
-  "questions": ["question 1?", "question 2?", ...]
+  "keyPoints": ["Detailed point 1 with context and reasoning (2-4 sentences)", "Detailed point 2...", ...],
+  "questions": ["[Comprehension] Basic question...", "[Analysis] Deeper question...", "[Critical] Advanced question...", ...]
 }
 
-Keep each point concise (1-2 sentences max). Generate 5-8 key points and 4-6 questions.`;
+Generate 5-8 detailed key points and 5-7 graduated questions. Each key point MUST be substantive — not a single sentence but a mini-paragraph that would help a student understand and remember the concept.`;
 }
 
 function buildAnalyzePrompt(newText, currentNodes, currentEdges) {

@@ -1,8 +1,9 @@
 // components/KnowledgeGraph.jsx — ReactFlow + d3-force, premium animated nodes
 
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   ReactFlow,
+  ReactFlowProvider,
   Background,
   Controls,
   MiniMap,
@@ -12,6 +13,7 @@ import {
   applyEdgeChanges,
   Handle,
   Position,
+  useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import useLectureStore from '../store/lectureStore';
@@ -34,12 +36,15 @@ function getNodeColor(index) {
 function ConceptNode({ data }) {
   const color = data.color || NODE_COLORS[0];
   const connectionCount = data.connections || 0;
+  // Scale: 1.0 for 0 connections, up to 1.25 for 6+ connections
+  const scale = 1 + Math.min(connectionCount, 6) * 0.04;
 
   return (
     <div className="concept-node-wrapper" style={{
       '--node-glow': color.glow,
       '--node-border': color.border,
       '--node-ring': color.ring,
+      transform: `scale(${scale})`,
     }}>
       {/* Glow layer behind the node */}
       <div className="concept-node-glow" />
@@ -97,10 +102,20 @@ function EdgeGradientDefs() {
 }
 
 export default function KnowledgeGraph() {
+  return (
+    <ReactFlowProvider>
+      <KnowledgeGraphInner />
+    </ReactFlowProvider>
+  );
+}
+
+function KnowledgeGraphInner() {
   const storeNodes = useLectureStore((s) => s.nodes);
   const storeEdges = useLectureStore((s) => s.edges);
   const updateNodePositions = useLectureStore((s) => s.updateNodePositions);
   const status = useLectureStore((s) => s.status);
+  const { fitView } = useReactFlow();
+  const prevNodeCountRef = useRef(0);
 
   const [nodes, setNodes] = useNodesState([]);
   const [edges, setEdges] = useEdgesState([]);
@@ -130,6 +145,16 @@ export default function KnowledgeGraph() {
       });
     });
   }, [storeNodes, connectionCounts, setNodes]);
+
+  // Auto-fit view when new nodes are added
+  useEffect(() => {
+    if (storeNodes.length > 0 && storeNodes.length !== prevNodeCountRef.current) {
+      prevNodeCountRef.current = storeNodes.length;
+      // Small delay to let positions settle
+      const timer = setTimeout(() => fitView({ padding: 0.3, duration: 400 }), 200);
+      return () => clearTimeout(timer);
+    }
+  }, [storeNodes.length, fitView]);
 
   // Sync edges from store
   useEffect(() => {
