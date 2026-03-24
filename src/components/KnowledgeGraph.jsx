@@ -36,8 +36,9 @@ function getNodeColor(index) {
 function ConceptNode({ data }) {
   const color = data.color || NODE_COLORS[0];
   const connectionCount = data.connections || 0;
-  // Scale: 1.0 for 0 connections, up to 1.25 for 6+ connections
-  const scale = 1 + Math.min(connectionCount, 6) * 0.04;
+  // Scale: sqrt of connections — hub nodes visually dominate
+  // 0 connections = 1.0x, 4 connections = 1.24x, 10 connections = 1.38x
+  const scale = 1 + 0.12 * Math.sqrt(connectionCount);
 
   return (
     <div className="concept-node-wrapper" style={{

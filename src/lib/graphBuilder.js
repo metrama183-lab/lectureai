@@ -1,30 +1,65 @@
 // lib/graphBuilder.js — transforms { nodes_to_add, edges_to_add }
 // into positioned nodes using d3-force simulation
+// Uses forceX/forceY (NOT forceCenter) to avoid center-of-mass drift
 
-import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide, forceX, forceY } from 'd3-force';
+import { forceSimulation, forceLink, forceManyBody, forceCollide, forceX, forceY } from 'd3-force';
+
+// Canvas logical center
+const CX = 400;
+const CY = 300;
+
+/**
+ * Compute degree (connection count) for each node
+ */
+function computeDegrees(allEdges) {
+  const degrees = {};
+  allEdges.forEach((e) => {
+    const src = typeof e.source === 'object' ? e.source.id : e.source;
+    const tgt = typeof e.target === 'object' ? e.target.id : e.target;
+    degrees[src] = (degrees[src] || 0) + 1;
+    degrees[tgt] = (degrees[tgt] || 0) + 1;
+  });
+  return degrees;
+}
 
 /**
  * Run d3-force simulation on all nodes (existing + new) to compute positions.
- * Existing nodes with real positions are fixed so only new nodes float into place.
- * @param {Array} allNodes - All nodes (existing with positions + new without)
- * @param {Array} allEdges - All edges
- * @returns {Object} Map of nodeId → { x, y }
+ * - Root node (first ever node) is fixed at center with fx/fy
+ * - forceX/forceY provide centripetal pull (NO forceCenter — it causes drift)
+ * - forceCollide radius scales dynamically with node degree
  */
 export function computeLayout(allNodes, allEdges) {
   if (allNodes.length === 0) return {};
 
-  // Create simulation nodes — fix existing positioned nodes, randomise new ones
-  const simNodes = allNodes.map((node) => {
+  const degrees = computeDegrees(allEdges);
+
+  // Create simulation nodes
+  const simNodes = allNodes.map((node, index) => {
     const px = node.position?.x;
     const py = node.position?.y;
     const hasRealPosition = px !== undefined && py !== undefined && (px !== 0 || py !== 0);
+    const degree = degrees[node.id] || 0;
+
+    // First node = root: always fixed at center
+    if (index === 0) {
+      return {
+        id: node.id,
+        x: CX,
+        y: CY,
+        fx: CX,
+        fy: CY,
+        degree,
+      };
+    }
+
     return {
       id: node.id,
-      x: hasRealPosition ? px : (Math.random() * 600 - 300),
-      y: hasRealPosition ? py : (Math.random() * 400 - 200),
+      x: hasRealPosition ? px : (CX + (Math.random() * 400 - 200)),
+      y: hasRealPosition ? py : (CY + (Math.random() * 300 - 150)),
       // Lock existing nodes so only new ones move
       fx: hasRealPosition ? px : undefined,
       fy: hasRealPosition ? py : undefined,
+      degree,
     };
   });
 
@@ -37,18 +72,23 @@ export function computeLayout(allNodes, allEdges) {
       target: e.target,
     }));
 
-  // Run force simulation synchronously
+  // Run force simulation — NO forceCenter!
+  // forceX/forceY pull each node individually toward center (true gravity)
+  // forceCenter would translate the center of mass, causing drift with orphan nodes
   const simulation = forceSimulation(simNodes)
-    .force('link', forceLink(simLinks).id((d) => d.id).distance(280).strength(0.3))
-    .force('charge', forceManyBody().strength(-1200).distanceMax(800))
-    .force('center', forceCenter(400, 300).strength(0.05))
-    .force('x', forceX(400).strength(0.08))
-    .force('y', forceY(300).strength(0.08))
-    .force('collide', forceCollide(100))
+    .force('link', forceLink(simLinks).id((d) => d.id).distance(250).strength(0.35))
+    .force('charge', forceManyBody().strength(-800).distanceMax(500))
+    .force('x', forceX(CX).strength(0.15))
+    .force('y', forceY(CY).strength(0.15))
+    .force('collide', forceCollide((d) => {
+      // Dynamic collision radius: bigger nodes (more connections) get more space
+      // R = 60 + 15 * √degree
+      return 60 + 15 * Math.sqrt(d.degree || 0);
+    }))
     .stop();
 
-  // Run 200 ticks for better convergence with stronger forces
-  for (let i = 0; i < 200; i++) {
+  // Run 250 ticks for stronger convergence
+  for (let i = 0; i < 250; i++) {
     simulation.tick();
   }
 
@@ -63,11 +103,6 @@ export function computeLayout(allNodes, allEdges) {
 
 /**
  * Process a Mistral delta: add nodes to store and recompute layout
- * @param {Object} delta - { nodes_to_add, edges_to_add }
- * @param {Function} addGraphDelta - Zustand action
- * @param {Function} updateNodePositions - Zustand action
- * @param {Array} existingNodes - Current nodes in store
- * @param {Array} existingEdges - Current edges in store
  */
 export function processDelta(delta, addGraphDelta, updateNodePositions, existingNodes, existingEdges) {
   // First add the new nodes/edges to the store
@@ -101,3 +136,4 @@ export function processDelta(delta, addGraphDelta, updateNodePositions, existing
   const positions = computeLayout(allNodes, allEdges);
   updateNodePositions(positions);
 }
+
