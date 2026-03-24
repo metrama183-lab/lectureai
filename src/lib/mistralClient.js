@@ -6,9 +6,10 @@
  * @param {string} newText - New unanalyzed transcript text
  * @param {Array} currentNodes - Current graph nodes
  * @param {Array} currentEdges - Current graph edges
+ * @param {string} language - Language code ('it' or 'en')
  * @returns {Promise<{nodes_to_add: Array, edges_to_add: Array}>}
  */
-export async function analyzeText(newText, currentNodes = [], currentEdges = []) {
+export async function analyzeText(newText, currentNodes = [], currentEdges = [], language = 'it') {
   const response = await fetch('/api/analyze', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -16,6 +17,7 @@ export async function analyzeText(newText, currentNodes = [], currentEdges = [])
       newText,
       currentNodes,
       currentEdges,
+      language,
     }),
   });
 
@@ -34,15 +36,17 @@ export async function analyzeText(newText, currentNodes = [], currentEdges = [])
 /**
  * Generate a summary of the full lecture transcript
  * @param {string} fullTranscript - Complete transcript text
+ * @param {string} language - Language code ('it' or 'en')
  * @returns {Promise<{keyPoints: Array, questions: Array}>}
  */
-export async function generateSummary(fullTranscript) {
+export async function generateSummary(fullTranscript, language = 'it') {
   const response = await fetch('/api/analyze', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       newText: fullTranscript,
       mode: 'summary',
+      language,
     }),
   });
 
@@ -57,3 +61,4 @@ export async function generateSummary(fullTranscript) {
     questions: data.questions || [],
   };
 }
+

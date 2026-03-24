@@ -37,7 +37,7 @@ export default function RecordButton() {
     if (!newText || newText.length < MIN_TEXT_FOR_ANALYSIS) return;
 
     try {
-      const delta = await analyzeText(newText, store.nodes, store.edges);
+      const delta = await analyzeText(newText, store.nodes, store.edges, store.language);
       if (delta.nodes_to_add.length > 0 || delta.edges_to_add.length > 0) {
         const currentStore = useLectureStore.getState();
         processDelta(delta, addGraphDelta, updateNodePositions, currentStore.nodes, currentStore.edges);
@@ -128,7 +128,7 @@ export default function RecordButton() {
 
       try {
         if (newText && newText.length >= 20) {
-          const delta = await analyzeText(newText, store.nodes, store.edges);
+          const delta = await analyzeText(newText, store.nodes, store.edges, store.language);
           if (delta.nodes_to_add.length > 0 || delta.edges_to_add.length > 0) {
             const currentStore = useLectureStore.getState();
             processDelta(delta, addGraphDelta, updateNodePositions, currentStore.nodes, currentStore.edges);
@@ -137,7 +137,7 @@ export default function RecordButton() {
         }
 
         if (store.transcript && store.transcript.length >= 100) {
-          const summary = await generateSummary(store.transcript);
+          const summary = await generateSummary(store.transcript, store.language);
           setSummary(summary);
           addToast('success', 'Summary ready!');
         }

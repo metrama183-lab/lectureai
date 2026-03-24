@@ -80,7 +80,7 @@ export default function App() {
       const finalStore = useLectureStore.getState();
       const newText = finalStore.getNewText();
       if (newText && newText.length >= 40) {
-        const delta = await analyzeText(newText, finalStore.nodes, finalStore.edges);
+        const delta = await analyzeText(newText, finalStore.nodes, finalStore.edges, finalStore.language);
         if (delta.nodes_to_add.length > 0 || delta.edges_to_add.length > 0) {
           const s = useLectureStore.getState();
           processDelta(delta, s.addGraphDelta, s.updateNodePositions, s.nodes, s.edges);
@@ -91,7 +91,7 @@ export default function App() {
       // Generate summary if enough text
       const afterAnalysis = useLectureStore.getState();
       if (afterAnalysis.transcript.length >= 100) {
-        const summary = await generateSummary(afterAnalysis.transcript);
+        const summary = await generateSummary(afterAnalysis.transcript, afterAnalysis.language);
         useLectureStore.getState().setSummary(summary);
         addToast('success', 'Audio processed — summary ready!');
       } else {
