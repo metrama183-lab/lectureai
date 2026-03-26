@@ -36,11 +36,9 @@ function getNodeColor(index) {
 function ConceptNode({ data }) {
   const color = data.color || NODE_COLORS[0];
   const connectionCount = data.connections || 0;
-  // Aggressive scaling: hub nodes are 2-3x bigger than leaves
-  // 0 conn = 1.0x, 2 conn = 1.5x, 5 conn = 1.9x, 9 conn = 2.4x, 15 conn = 2.9x
-  const scale = 1 + 0.47 * Math.sqrt(connectionCount);
-  // Font scales too so labels stay readable on big nodes
-  const fontSize = 13 + Math.min(connectionCount, 10) * 0.8;
+  // Moderate scaling: hub nodes clearly bigger but not absurd
+  // 0 conn = 1.0x, 2 conn = 1.35x, 5 conn = 1.56x, 9 conn = 1.75x
+  const scale = 1 + 0.25 * Math.sqrt(connectionCount);
 
   return (
     <div className="concept-node-wrapper" style={{
@@ -49,10 +47,8 @@ function ConceptNode({ data }) {
       '--node-ring': color.ring,
       transform: `scale(${scale})`,
     }}>
-      {/* Glow layer — always visible on hub nodes */}
-      <div className="concept-node-glow" style={{
-        opacity: connectionCount >= 4 ? 0.7 : undefined,
-      }} />
+      {/* Glow layer behind the node */}
+      <div className="concept-node-glow" />
 
       {/* Main node */}
       <div className="concept-node">
@@ -60,7 +56,7 @@ function ConceptNode({ data }) {
 
         {/* Accent dot based on importance */}
         <div className="concept-node-dot" style={{ background: color.ring }} />
-        <div className="concept-node-label" style={{ color: color.text, fontSize: `${fontSize}px` }}>
+        <div className="concept-node-label" style={{ color: color.text }}>
           {data.label}
         </div>
         {connectionCount > 0 && (
