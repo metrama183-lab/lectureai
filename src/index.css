@@ -600,8 +600,10 @@ body {
   height: 100%;
 }
 
+/* Edge styling — clean solid lines */
 .graph-canvas .react-flow__edge-path {
-  stroke: rgba(99, 102, 241, 0.5);
+  stroke: rgba(148, 163, 184, 0.35);
+  stroke-width: 1.5;
 }
 
 /* Edge labels: hidden by default, visible on hover */
@@ -644,111 +646,90 @@ body {
   display: none;
 }
 
-/* Custom concept node — premium design */
+/* ─── NotebookLM-style concept node ─── */
 .concept-node-wrapper {
   position: relative;
   cursor: grab;
-  animation: nodeAppear 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: nodeAppear 0.4s ease-out both;
 }
 
-/* Glow aura behind the node */
+/* No glow — clean design */
 .concept-node-glow {
-  position: absolute;
-  inset: -8px;
-  border-radius: 20px;
-  background: radial-gradient(ellipse at center, var(--node-glow, rgba(99,102,241,0.25)) 0%, transparent 70%);
-  opacity: 0;
-  transition: opacity 0.4s ease;
-  pointer-events: none;
-  filter: blur(12px);
+  display: none;
 }
 
-.concept-node-wrapper:hover .concept-node-glow {
-  opacity: 1;
-}
-
+/* Main node — pill shape, colored left accent */
 .concept-node {
   position: relative;
-  background: rgba(15, 23, 42, 0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1.5px solid var(--node-border, rgba(99, 102, 241, 0.4));
-  border-radius: 14px;
-  padding: 12px 20px;
+  background: rgba(30, 41, 59, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-left: 3px solid var(--node-ring, #6366f1);
+  border-radius: 12px;
+  padding: 10px 16px 10px 14px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  box-shadow:
-    0 4px 24px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(255, 255, 255, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  gap: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  transition: all 0.2s ease;
 }
 
 .concept-node-wrapper:hover .concept-node {
-  border-color: var(--node-ring, #6366f1);
-  box-shadow:
-    0 4px 24px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(255, 255, 255, 0.06),
-    0 0 30px var(--node-glow, rgba(99,102,241,0.3)),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  transform: translateY(-2px) scale(1.03);
+  border-color: rgba(148, 163, 184, 0.3);
+  border-left-color: var(--node-ring, #6366f1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  transform: translateY(-1px);
 }
 
-/* Accent dot */
+/* Accent dot — small, static */
 .concept-node-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   flex-shrink: 0;
-  box-shadow: 0 0 8px var(--node-glow, rgba(99,102,241,0.4));
-  animation: dotPulse 3s ease-in-out infinite;
-}
-
-@keyframes dotPulse {
-  0%, 100% { opacity: 0.7; box-shadow: 0 0 6px var(--node-glow, rgba(99,102,241,0.3)); }
-  50%      { opacity: 1;   box-shadow: 0 0 14px var(--node-glow, rgba(99,102,241,0.6)); }
+  opacity: 0.85;
 }
 
 .concept-node-label {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   white-space: nowrap;
-  letter-spacing: 0.2px;
+  letter-spacing: 0.1px;
+  color: rgba(226, 232, 240, 0.95);
 }
 
 /* Connection count badge */
 .concept-node-badge {
-  font-size: 10px;
-  font-weight: 700;
-  min-width: 20px;
-  height: 20px;
+  font-size: 9px;
+  font-weight: 600;
+  min-width: 18px;
+  height: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
+  border-radius: 9px;
   border: 1px solid;
   flex-shrink: 0;
-  padding: 0 5px;
+  padding: 0 4px;
+  opacity: 0.7;
 }
 
-/* Invisible handles — functional but hidden */
+/* Handles — invisible but functional */
 .concept-handle {
-  width: 8px !important;
-  height: 8px !important;
+  width: 6px !important;
+  height: 6px !important;
   background: var(--node-ring, #6366f1) !important;
-  border: 2px solid rgba(15, 23, 42, 0.9) !important;
+  border: 1.5px solid rgba(15, 23, 42, 0.9) !important;
   opacity: 0;
   transition: opacity 0.2s ease;
 }
 
 .concept-node-wrapper:hover .concept-handle {
-  opacity: 1;
+  opacity: 0.6;
 }
 
 @keyframes nodeAppear {
-  from { transform: scale(0.3); opacity: 0; filter: blur(8px); }
-  to   { transform: scale(1); opacity: 1; filter: blur(0); }
+  from { transform: scale(0.7); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
 }
 
 /* Graph empty state */

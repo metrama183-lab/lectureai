@@ -79,12 +79,12 @@ const nodeTypes = { custom: ConceptNode };
 
 const EDGE_STYLE = {
   type: 'default',
-  animated: true,
-  style: { stroke: 'url(#edge-gradient)', strokeWidth: 2.5, strokeLinecap: 'round' },
-  labelStyle: { fill: 'rgba(255,255,255,0.85)', fontSize: 10, fontWeight: 600, letterSpacing: '0.3px' },
-  labelBgStyle: { fill: 'rgba(15, 23, 42, 0.85)', rx: 6, ry: 6 },
-  labelBgPadding: [8, 5],
-  labelBgBorderRadius: 6,
+  animated: false,
+  style: { stroke: 'rgba(148, 163, 184, 0.35)', strokeWidth: 1.5 },
+  labelStyle: { fill: 'rgba(203, 213, 225, 0.7)', fontSize: 9, fontWeight: 500 },
+  labelBgStyle: { fill: 'rgba(15, 23, 42, 0.75)', rx: 4, ry: 4 },
+  labelBgPadding: [6, 3],
+  labelBgBorderRadius: 4,
 };
 
 // SVG gradient definitions for edges
