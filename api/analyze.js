@@ -29,6 +29,8 @@ RULES:
 - Do NOT create duplicate nodes — check existing nodes first
 - DEDUPLICATION: If a concept is the same as an existing node but with a slightly different name (e.g. "Giuseppe Parini" vs "Parini", or "Neoclassicismo" vs "Il Neoclassicismo"), do NOT create a new node — use the existing node's id instead.
 - TRANSCRIPTION ERRORS: The transcript may contain speech recognition errors. Correct obvious errors in node labels (e.g. "Virgilio Traccio" should be "Virgilio" if that's the intended reference). Do NOT create nodes from clearly garbled text.
+- QUALITY OVER QUANTITY: Extract only the most significant concepts — main topics, key people, important theories. Skip minor details, examples, and tangential mentions. Maximum 5 new nodes per response.
+- PREFER EDGES: When possible, connect new information to existing nodes via new edges instead of creating new nodes. A rich web of connections is better than many isolated nodes.
 - If a new concept relates to an existing node, create an edge to that existing node's id
 - Keep labels concise and meaningful
 - Return valid JSON only, no text outside the JSON

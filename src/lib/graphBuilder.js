@@ -77,13 +77,13 @@ export function computeLayout(allNodes, allEdges) {
   // forceCenter would translate the center of mass, causing drift with orphan nodes
   const simulation = forceSimulation(simNodes)
     .force('link', forceLink(simLinks).id((d) => d.id).distance(250).strength(0.35))
-    .force('charge', forceManyBody().strength(-800).distanceMax(500))
-    .force('x', forceX(CX).strength(0.15))
-    .force('y', forceY(CY).strength(0.15))
+    .force('charge', forceManyBody().strength(-800).distanceMax(350))
+    .force('x', forceX(CX).strength(0.25))
+    .force('y', forceY(CY).strength(0.25))
     .force('collide', forceCollide((d) => {
-      // Dynamic collision radius: bigger nodes (more connections) get more space
-      // R = 60 + 15 * √degree
-      return 60 + 15 * Math.sqrt(d.degree || 0);
+      // Dynamic collision radius scaled with degree
+      // Hub nodes get much more breathing room
+      return 55 + 20 * Math.sqrt(d.degree || 0);
     }))
     .stop();
 
