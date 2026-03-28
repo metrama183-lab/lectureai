@@ -6,17 +6,17 @@
 
 Press **Start Lecture**, speak, and watch:
 1. **Live transcript** — Whisper (via Groq) transcribes every voice segment in under a second.
-2. **Knowledge graph** — Mistral Large extracts concepts and relationships every 30 seconds and builds an interactive node graph with d3-force layout.
+2. **Knowledge graph** — Mistral Large extracts concepts and relationships every 30 seconds and builds an interactive node graph with a Dagre tree layout.
 3. **Auto summary** — When you stop, the app generates key points and probable exam questions.
 4. **Export** — Download the full transcript + graph + summary as PDF or Markdown.
 
-No installation, no accounts, no data leaving European servers.
+No installation required, no account needed.
 
 ## Tech stack
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 19, Zustand, ReactFlow, d3-force, Vite |
+| Frontend | React 19, Zustand, ReactFlow, Dagre, Vite |
 | Transcription | Groq Whisper (`whisper-large-v3-turbo`) |
 | Analysis | Mistral Large (`mistral-large-latest`), fallback Cerebras (`llama-3.3-70b`) |
 | Deployment | Vercel (serverless API + static frontend) |
@@ -61,7 +61,7 @@ audioManager  →  whisperClient  →  store.transcript
                                         ↓ (every 30s)
                                    mistralClient  →  graphBuilder  →  store.nodes/edges
                                         ↓
-                                   KnowledgeGraph (ReactFlow + d3-force)
+                                   KnowledgeGraph (ReactFlow + Dagre)
 ```
 
 - **VAD** — energy-based voice activity detection with auto-calibration; only real voice segments are sent for transcription.
