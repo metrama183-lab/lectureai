@@ -1,4 +1,4 @@
-// components/KnowledgeGraph.jsx — ReactFlow + d3-force, premium animated nodes
+// components/KnowledgeGraph.jsx — ReactFlow radial mind-map
 
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
@@ -6,7 +6,6 @@ import {
   ReactFlowProvider,
   Background,
   Controls,
-  MiniMap,
   useNodesState,
   useEdgesState,
   applyNodeChanges,
@@ -18,89 +17,95 @@ import {
 import '@xyflow/react/dist/style.css';
 import useLectureStore from '../store/lectureStore';
 
-// Color palette for node categories — cycles through these
-const NODE_COLORS = [
-  { bg: 'rgba(99, 102, 241, 0.12)', border: 'rgba(99, 102, 241, 0.5)',  glow: 'rgba(99,  102, 241, 0.25)', text: '#a5b4fc', ring: '#6366f1' },  // indigo
-  { bg: 'rgba(139, 92, 246, 0.12)', border: 'rgba(139, 92, 246, 0.5)',  glow: 'rgba(139, 92,  246, 0.25)', text: '#c4b5fd', ring: '#8b5cf6' },  // violet
-  { bg: 'rgba(6, 182, 212, 0.12)',  border: 'rgba(6, 182, 212, 0.5)',   glow: 'rgba(6,   182, 212, 0.25)', text: '#67e8f9', ring: '#06b6d4' },  // cyan
-  { bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.5)',  glow: 'rgba(16,  185, 129, 0.25)', text: '#6ee7b7', ring: '#10b981' },  // emerald
-  { bg: 'rgba(244, 114, 182, 0.12)',border: 'rgba(244, 114, 182, 0.5)', glow: 'rgba(244, 114, 182, 0.25)', text: '#f9a8d4', ring: '#ec4899' },  // pink
-  { bg: 'rgba(251, 146, 60, 0.12)', border: 'rgba(251, 146, 60, 0.5)',  glow: 'rgba(251, 146, 60,  0.25)', text: '#fdba74', ring: '#f97316' },  // orange
-];
+// Color palette per level
+const LEVEL_COLORS = {
+  0: { bg: 'rgba(99, 102, 241, 0.15)', border: '#6366f1', text: '#f1f5f9', ring: '#6366f1' },  // root - indigo
+  1: [
+    { bg: 'rgba(6, 182, 212, 0.12)',   border: '#06b6d4', text: '#a5f3fc', ring: '#06b6d4' },   // cyan
+    { bg: 'rgba(16, 185, 129, 0.12)',  border: '#10b981', text: '#a7f3d0', ring: '#10b981' },   // emerald
+    { bg: 'rgba(244, 114, 182, 0.12)', border: '#ec4899', text: '#fbcfe8', ring: '#ec4899' },   // pink
+    { bg: 'rgba(251, 146, 60, 0.12)',  border: '#f97316', text: '#fed7aa', ring: '#f97316' },   // orange
+    { bg: 'rgba(139, 92, 246, 0.12)',  border: '#8b5cf6', text: '#ddd6fe', ring: '#8b5cf6' },   // violet
+  ],
+  2: { bg: 'rgba(148, 163, 184, 0.08)', border: 'rgba(148, 163, 184, 0.35)', text: '#cbd5e1', ring: 'rgba(148,163,184,0.5)' },
+};
 
-function getNodeColor(index) {
-  return NODE_COLORS[index % NODE_COLORS.length];
+function getNodeColor(node, index) {
+  const level = node.data?.level;
+  if (level === 0) return LEVEL_COLORS[0];
+  if (level === 1) return LEVEL_COLORS[1][index % LEVEL_COLORS[1].length];
+  return LEVEL_COLORS[2];
 }
 
-// Premium custom node with gradient border glow and handles
-function ConceptNode({ data }) {
-  const color = data.color || NODE_COLORS[0];
-  const connectionCount = data.connections || 0;
-  // Moderate scaling: hub nodes clearly bigger but not absurd
-  // 0 conn = 1.0x, 2 conn = 1.35x, 5 conn = 1.56x, 9 conn = 1.75x
-  const scale = 1 + 0.25 * Math.sqrt(connectionCount);
-
+// Root node — large, centered, prominent
+function RootNode({ data }) {
+  const color = LEVEL_COLORS[0];
   return (
-    <div className="concept-node-wrapper" style={{
-      '--node-glow': color.glow,
-      '--node-border': color.border,
-      '--node-ring': color.ring,
-      transform: `scale(${scale})`,
-    }}>
-      {/* Glow layer behind the node */}
-      <div className="concept-node-glow" />
-
-      {/* Main node */}
-      <div className="concept-node">
-        <Handle type="target" position={Position.Top} className="concept-handle" />
-
-        {/* Accent dot based on importance */}
-        <div className="concept-node-dot" style={{ background: color.ring }} />
-        <div className="concept-node-label" style={{ color: color.text }}>
-          {data.label}
-        </div>
-        {connectionCount > 0 && (
-          <div className="concept-node-badge" style={{
-            background: color.bg,
-            color: color.text,
-            borderColor: color.border,
-          }}>
-            {connectionCount}
-          </div>
-        )}
-
-        <Handle type="source" position={Position.Bottom} className="concept-handle" />
+    <div className="root-node-wrapper">
+      <div className="root-node" style={{ borderColor: color.border }}>
+        <Handle type="source" position={Position.Top} className="concept-handle" id="top" />
+        <Handle type="source" position={Position.Right} className="concept-handle" id="right" />
+        <Handle type="source" position={Position.Bottom} className="concept-handle" id="bottom" />
+        <Handle type="source" position={Position.Left} className="concept-handle" id="left" />
+        <div className="root-node-label">{data.label}</div>
       </div>
     </div>
   );
 }
 
-const nodeTypes = { custom: ConceptNode };
-
-const EDGE_STYLE = {
-  type: 'default',
-  animated: false,
-  style: { stroke: 'rgba(148, 163, 184, 0.35)', strokeWidth: 1.5 },
-  labelStyle: { fill: 'rgba(203, 213, 225, 0.7)', fontSize: 9, fontWeight: 500 },
-  labelBgStyle: { fill: 'rgba(15, 23, 42, 0.75)', rx: 4, ry: 4 },
-  labelBgPadding: [6, 3],
-  labelBgBorderRadius: 4,
-};
-
-// SVG gradient definitions for edges
-function EdgeGradientDefs() {
+// Level 1 node — medium, colored
+function Level1Node({ data }) {
+  const color = data.color || LEVEL_COLORS[1][0];
   return (
-    <svg style={{ position: 'absolute', width: 0, height: 0 }}>
-      <defs>
-        <linearGradient id="edge-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#6366f1" stopOpacity="0.8" />
-          <stop offset="50%" stopColor="#8b5cf6" stopOpacity="0.6" />
-          <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.8" />
-        </linearGradient>
-      </defs>
-    </svg>
+    <div className="level1-node-wrapper">
+      <div className="level1-node" style={{
+        borderColor: color.border,
+        boxShadow: `0 2px 12px ${color.border}22`,
+      }}>
+        <Handle type="target" position={Position.Top} className="concept-handle" id="top" />
+        <Handle type="target" position={Position.Right} className="concept-handle" id="right" />
+        <Handle type="target" position={Position.Bottom} className="concept-handle" id="bottom" />
+        <Handle type="target" position={Position.Left} className="concept-handle" id="left" />
+        <Handle type="source" position={Position.Top} className="concept-handle" id="src-top" />
+        <Handle type="source" position={Position.Right} className="concept-handle" id="src-right" />
+        <Handle type="source" position={Position.Bottom} className="concept-handle" id="src-bottom" />
+        <Handle type="source" position={Position.Left} className="concept-handle" id="src-left" />
+        <div className="concept-node-dot" style={{ background: color.ring }} />
+        <div className="level1-node-label" style={{ color: color.text }}>{data.label}</div>
+      </div>
+    </div>
   );
 }
+
+// Level 2 node — small leaf
+function Level2Node({ data }) {
+  const color = data.color || LEVEL_COLORS[2];
+  return (
+    <div className="level2-node-wrapper">
+      <div className="level2-node" style={{
+        borderColor: color.border,
+      }}>
+        <Handle type="target" position={Position.Top} className="concept-handle" id="top" />
+        <Handle type="target" position={Position.Right} className="concept-handle" id="right" />
+        <Handle type="target" position={Position.Bottom} className="concept-handle" id="bottom" />
+        <Handle type="target" position={Position.Left} className="concept-handle" id="left" />
+        <div className="level2-node-label" style={{ color: color.text }}>{data.label}</div>
+      </div>
+    </div>
+  );
+}
+
+const nodeTypes = { root: RootNode, level1: Level1Node, level2: Level2Node, custom: Level1Node };
+
+const EDGE_STYLE = {
+  type: 'smoothstep',
+  animated: false,
+  style: { stroke: 'rgba(148, 163, 184, 0.35)', strokeWidth: 1.5 },
+  labelStyle: { fill: 'rgba(203, 213, 225, 0.8)', fontSize: 10, fontWeight: 500 },
+  labelBgStyle: { fill: 'rgba(15, 23, 42, 0.85)', rx: 6, ry: 6 },
+  labelBgPadding: [6, 4],
+  labelBgBorderRadius: 6,
+};
 
 export default function KnowledgeGraph() {
   return (
@@ -115,47 +120,81 @@ function KnowledgeGraphInner() {
   const storeEdges = useLectureStore((s) => s.edges);
   const updateNodePositions = useLectureStore((s) => s.updateNodePositions);
   const status = useLectureStore((s) => s.status);
+  const layoutVersion = useLectureStore((s) => s.layoutVersion);
   const { fitView } = useReactFlow();
   const prevNodeCountRef = useRef(0);
 
   const [nodes, setNodes] = useNodesState([]);
   const [edges, setEdges] = useEdgesState([]);
 
-  // Compute connection counts per node for badge display
-  const connectionCounts = useMemo(() => {
-    const counts = {};
-    storeEdges.forEach((e) => {
-      counts[e.source] = (counts[e.source] || 0) + 1;
-      counts[e.target] = (counts[e.target] || 0) + 1;
+  // Track level-1 indices for color assignment
+  const level1Indices = useMemo(() => {
+    const indices = {};
+    let idx = 0;
+    storeNodes.forEach((n) => {
+      const level = n.data?.level;
+      if (level === 1) {
+        indices[n.id] = idx++;
+      }
     });
-    return counts;
-  }, [storeEdges]);
+    return indices;
+  }, [storeNodes]);
 
-  // Sync new nodes from store — add color and connection count
+  // Map each level-2 node to its parent's color index
+  const nodeColorMap = useMemo(() => {
+    const map = {};
+    storeNodes.forEach((n) => {
+      const level = n.data?.level;
+      if (level === 0) {
+        map[n.id] = LEVEL_COLORS[0];
+      } else if (level === 1) {
+        const idx = level1Indices[n.id] || 0;
+        map[n.id] = LEVEL_COLORS[1][idx % LEVEL_COLORS[1].length];
+      } else {
+        // Level 2: inherit color from parent
+        const parentId = n.data?.parent;
+        if (parentId && level1Indices[parentId] !== undefined) {
+          const idx = level1Indices[parentId];
+          map[n.id] = LEVEL_COLORS[1][idx % LEVEL_COLORS[1].length];
+        } else {
+          map[n.id] = LEVEL_COLORS[2];
+        }
+      }
+    });
+    return map;
+  }, [storeNodes, level1Indices]);
+
+  // Sync nodes from store
   useEffect(() => {
     setNodes((current) => {
       const byId = Object.fromEntries(current.map((n) => [n.id, n]));
-      return storeNodes.map((n, i) => {
+      return storeNodes.map((n) => {
         const existing = byId[n.id];
-        const color = getNodeColor(i);
-        const connections = connectionCounts[n.id] || 0;
+        const level = n.data?.level ?? 1;
+        const color = nodeColorMap[n.id] || LEVEL_COLORS[2];
+        let nodeType = 'custom';
+        if (level === 0) nodeType = 'root';
+        else if (level === 1) nodeType = 'level1';
+        else nodeType = 'level2';
+
+        const newData = { ...n.data, color, level };
+
         if (existing) {
-          return { ...existing, data: { ...n.data, color, connections } };
+          // USA n.position dallo store (posizione Dagre), non quella di React Flow
+          return { ...existing, position: n.position, type: nodeType, data: newData };
         }
-        return { ...n, data: { ...n.data, color, connections } };
+        return { ...n, type: nodeType, data: newData };
       });
     });
-  }, [storeNodes, connectionCounts, setNodes]);
+  }, [storeNodes, nodeColorMap, setNodes]);
 
-  // Auto-fit view when new nodes are added
+  // Auto-fit view whenever node count changes (50ms lets React Flow settle DOM first)
   useEffect(() => {
-    if (storeNodes.length > 0 && storeNodes.length !== prevNodeCountRef.current) {
-      prevNodeCountRef.current = storeNodes.length;
-      // Small delay to let positions settle
-      const timer = setTimeout(() => fitView({ padding: 0.3, duration: 400 }), 200);
+    if (storeNodes.length > 0) {
+      const timer = setTimeout(() => fitView({ padding: 0.18, duration: 500 }), 50);
       return () => clearTimeout(timer);
     }
-  }, [storeNodes.length, fitView]);
+  }, [storeNodes.length, layoutVersion, fitView]);
 
   // Sync edges from store
   useEffect(() => {
@@ -182,8 +221,6 @@ function KnowledgeGraphInner() {
 
   return (
     <div className="knowledge-graph" id="knowledge-graph">
-      <EdgeGradientDefs />
-
       <div className="graph-header">
         <div className="graph-header-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -230,14 +267,14 @@ function KnowledgeGraphInner() {
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             fitView
-            fitViewOptions={{ padding: 0.4 }}
-            minZoom={0.15}
+            fitViewOptions={{ padding: 0.25 }}
+            minZoom={0.1}
             maxZoom={2.5}
             proOptions={{ hideAttribution: true }}
             colorMode="dark"
           >
             <Background
-              color="rgba(99, 102, 241, 0.05)"
+              color="rgba(99, 102, 241, 0.04)"
               gap={30}
               size={1.5}
               variant="dots"
@@ -252,24 +289,9 @@ function KnowledgeGraphInner() {
                 backdropFilter: 'blur(12px)',
               }}
             />
-            <MiniMap
-              nodeColor={(node) => {
-                const color = node.data?.color;
-                return color?.ring || 'rgba(99, 102, 241, 0.8)';
-              }}
-              maskColor="rgba(10, 14, 26, 0.88)"
-              style={{
-                background: 'rgba(15, 23, 42, 0.7)',
-                borderRadius: '12px',
-                border: '1px solid rgba(99, 102, 241, 0.12)',
-                backdropFilter: 'blur(12px)',
-              }}
-              position="top-right"
-            />
           </ReactFlow>
         )}
       </div>
     </div>
   );
 }
-

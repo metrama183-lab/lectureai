@@ -606,9 +606,9 @@ body {
   stroke-width: 1.5;
 }
 
-/* Edge labels: hidden by default, visible on hover */
+/* Edge labels: always visible for mind-map readability */
 .graph-canvas .react-flow__edge-text {
-  opacity: 0;
+  opacity: 0.85;
   transition: opacity 0.3s ease;
 }
 
@@ -617,7 +617,7 @@ body {
 }
 
 .graph-canvas .react-flow__edge-textbg {
-  opacity: 0;
+  opacity: 0.85;
   transition: opacity 0.3s ease;
 }
 
@@ -646,41 +646,102 @@ body {
   display: none;
 }
 
-/* ─── NotebookLM-style concept node ─── */
-.concept-node-wrapper {
+/* ─── Root node — large, prominent, centered ─── */
+.root-node-wrapper {
+  cursor: grab;
+  animation: nodeAppear 0.5s ease-out both;
+}
+
+.root-node {
   position: relative;
+  background: rgba(30, 41, 59, 0.95);
+  border: 2.5px solid #6366f1;
+  border-radius: 18px;
+  padding: 20px 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 24px rgba(99, 102, 241, 0.2), 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: all 0.25s ease;
+  min-width: 160px;
+}
+
+.root-node-wrapper:hover .root-node {
+  box-shadow: 0 6px 32px rgba(99, 102, 241, 0.3), 0 4px 14px rgba(0, 0, 0, 0.4);
+  transform: scale(1.03);
+}
+
+.root-node-label {
+  font-size: 18px;
+  font-weight: 700;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+  text-align: center;
+  color: #f1f5f9;
+}
+
+/* ─── Level 1 node — medium, colored pill ─── */
+.level1-node-wrapper {
   cursor: grab;
   animation: nodeAppear 0.4s ease-out both;
 }
 
-/* No glow — clean design */
-.concept-node-glow {
-  display: none;
-}
-
-/* Main node — pill shape, colored left accent */
-.concept-node {
+.level1-node {
   position: relative;
   background: rgba(30, 41, 59, 0.92);
-  border: 1px solid rgba(148, 163, 184, 0.15);
-  border-left: 3px solid var(--node-ring, #6366f1);
-  border-radius: 12px;
-  padding: 10px 16px 10px 14px;
+  border: 1.5px solid;
+  border-radius: 14px;
+  padding: 12px 18px;
   display: flex;
   align-items: center;
   gap: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
   transition: all 0.2s ease;
 }
 
-.concept-node-wrapper:hover .concept-node {
-  border-color: rgba(148, 163, 184, 0.3);
-  border-left-color: var(--node-ring, #6366f1);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
-  transform: translateY(-1px);
+.level1-node-wrapper:hover .level1-node {
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+  transform: scale(1.03);
 }
 
-/* Accent dot — small, static */
+.level1-node-label {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  letter-spacing: 0.15px;
+}
+
+/* ─── Level 2 node — small leaf ─── */
+.level2-node-wrapper {
+  cursor: grab;
+  animation: nodeAppear 0.35s ease-out both;
+}
+
+.level2-node {
+  position: relative;
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid;
+  border-radius: 10px;
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+
+.level2-node-wrapper:hover .level2-node {
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.3);
+  transform: scale(1.03);
+}
+
+.level2-node-label {
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  letter-spacing: 0.1px;
+}
+
+/* Accent dot */
 .concept-node-dot {
   width: 7px;
   height: 7px;
@@ -689,42 +750,13 @@ body {
   opacity: 0.85;
 }
 
-.concept-node-label {
-  font-size: 13px;
-  font-weight: 500;
-  white-space: nowrap;
-  letter-spacing: 0.1px;
-  color: rgba(226, 232, 240, 0.95);
-}
-
-/* Connection count badge */
-.concept-node-badge {
-  font-size: 9px;
-  font-weight: 600;
-  min-width: 18px;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 9px;
-  border: 1px solid;
-  flex-shrink: 0;
-  padding: 0 4px;
-  opacity: 0.7;
-}
-
 /* Handles — invisible but functional */
 .concept-handle {
   width: 6px !important;
   height: 6px !important;
-  background: var(--node-ring, #6366f1) !important;
-  border: 1.5px solid rgba(15, 23, 42, 0.9) !important;
+  background: transparent !important;
+  border: none !important;
   opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.concept-node-wrapper:hover .concept-handle {
-  opacity: 0.6;
 }
 
 @keyframes nodeAppear {

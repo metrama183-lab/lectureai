@@ -30,6 +30,7 @@ const useLectureStore = create((set, get) => ({
   // ReactFlow-compatible nodes and edges
   nodes: [],
   edges: [],
+  layoutVersion: 0,
 
   // Add new nodes and edges from Mistral delta
   addGraphDelta: (delta) =>
@@ -42,7 +43,7 @@ const useLectureStore = create((set, get) => ({
         .map((n) => ({
           id: n.id,
           type: 'custom',
-          data: { label: n.label },
+          data: { label: n.label, level: n.level, parent: n.parent },
           position: n.position || { x: 0, y: 0 },
         }));
 
@@ -50,15 +51,7 @@ const useLectureStore = create((set, get) => ({
         .map((e) => {
           const id = `${e.source}->${e.target}`;
           if (existingEdgeIds.has(id)) return null;
-          return {
-            id,
-            source: e.source,
-            target: e.target,
-            label: e.label,
-            animated: true,
-            style: { stroke: 'var(--accent)', strokeWidth: 2 },
-            labelStyle: { fill: 'var(--text-secondary)', fontSize: 11 },
-          };
+          return { id, source: e.source, target: e.target, label: e.label };
         })
         .filter(Boolean);
 
@@ -78,6 +71,7 @@ const useLectureStore = create((set, get) => ({
         }
         return node;
       }),
+      layoutVersion: state.layoutVersion + 1,
     })),
 
   // Mark how much transcript has been analyzed

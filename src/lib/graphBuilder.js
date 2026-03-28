@@ -1,139 +1,93 @@
-// lib/graphBuilder.js — transforms { nodes_to_add, edges_to_add }
-// into positioned nodes using d3-force simulation
-// Uses forceX/forceY (NOT forceCenter) to avoid center-of-mass drift
+// lib/graphBuilder.js — Dagre layout, clean rewrite
+import dagre from '@dagrejs/dagre';
 
-import { forceSimulation, forceLink, forceManyBody, forceCollide, forceX, forceY } from 'd3-force';
+const NODE_W = 170;
+const NODE_H = 44;
 
-// Canvas logical center
-const CX = 400;
-const CY = 300;
+export function computeLayout(nodes, edges) {
+  if (nodes.length === 0) return {};
 
-/**
- * Compute degree (connection count) for each node
- */
-function computeDegrees(allEdges) {
-  const degrees = {};
-  allEdges.forEach((e) => {
+  const g = new dagre.graphlib.Graph();
+  g.setDefaultEdgeLabel(() => ({}));
+  g.setGraph({
+    rankdir: 'TB',      // top → bottom
+    ranksep: 90,        // vertical space between levels
+    nodesep: 55,        // horizontal space between same-level nodes
+    ranker: 'tight-tree',
+  });
+
+  nodes.forEach((n) => g.setNode(n.id, { width: NODE_W, height: NODE_H }));
+
+  // Only add legitimate parent→child edges (with robust fallback)
+  edges.forEach((e) => {
     const src = typeof e.source === 'object' ? e.source.id : e.source;
     const tgt = typeof e.target === 'object' ? e.target.id : e.target;
-    degrees[src] = (degrees[src] || 0) + 1;
-    degrees[tgt] = (degrees[tgt] || 0) + 1;
+    if (!src || !tgt) return;
+
+    const targetNode = nodes.find((n) => n.id === tgt);
+    
+    // Controlla parent in tutti i posti possibili
+    const parentId = targetNode?.data?.parent 
+      ?? targetNode?.parent 
+      ?? null;
+      
+    // Fallback: se non hai parent field, accetta comunque l'edge se va da livello basso ad alto
+    const srcNode = nodes.find((n) => n.id === src);
+    const srcLevel = srcNode?.data?.level ?? srcNode?.level ?? 0;
+    const tgtLevel = targetNode?.data?.level ?? targetNode?.level ?? 1;
+    
+    const isValidTreeEdge = parentId === src || 
+      (parentId === null && tgtLevel > srcLevel);
+      
+    if (isValidTreeEdge && src && tgt) {
+      g.setEdge(src, tgt);
+    }
   });
-  return degrees;
-}
 
-/**
- * Run d3-force simulation on all nodes (existing + new) to compute positions.
- * - Root node (first ever node) is fixed at center with fx/fy
- * - forceX/forceY provide centripetal pull (NO forceCenter — it causes drift)
- * - forceCollide radius scales dynamically with node degree
- */
-export function computeLayout(allNodes, allEdges) {
-  if (allNodes.length === 0) return {};
+  dagre.layout(g);
 
-  const degrees = computeDegrees(allEdges);
-
-  // Create simulation nodes
-  const simNodes = allNodes.map((node, index) => {
-    const px = node.position?.x;
-    const py = node.position?.y;
-    const hasRealPosition = px !== undefined && py !== undefined && (px !== 0 || py !== 0);
-    const degree = degrees[node.id] || 0;
-
-    // First node = root: always fixed at center
-    if (index === 0) {
-      return {
-        id: node.id,
-        x: CX,
-        y: CY,
-        fx: CX,
-        fy: CY,
-        degree,
+  const positions = {};
+  nodes.forEach((n) => {
+    const pos = g.node(n.id);
+    if (pos) {
+      positions[n.id] = {
+        x: pos.x - NODE_W / 2,
+        y: pos.y - NODE_H / 2,
       };
     }
-
-    return {
-      id: node.id,
-      x: hasRealPosition ? px : (CX + (Math.random() * 400 - 200)),
-      y: hasRealPosition ? py : (CY + (Math.random() * 300 - 150)),
-      // Lock existing nodes so only new ones move
-      fx: hasRealPosition ? px : undefined,
-      fy: hasRealPosition ? py : undefined,
-      degree,
-    };
-  });
-
-  // Create simulation links
-  const nodeIds = new Set(simNodes.map((n) => n.id));
-  const simLinks = allEdges
-    .filter((e) => nodeIds.has(e.source) && nodeIds.has(e.target))
-    .map((e) => ({
-      source: e.source,
-      target: e.target,
-    }));
-
-  // Run force simulation — NO forceCenter!
-  // forceX/forceY pull each node individually toward center (true gravity)
-  // forceCenter would translate the center of mass, causing drift with orphan nodes
-  const simulation = forceSimulation(simNodes)
-    .force('link', forceLink(simLinks).id((d) => d.id).distance(250).strength(0.35))
-    .force('charge', forceManyBody().strength(-800).distanceMax(400))
-    .force('x', forceX(CX).strength(0.18))
-    .force('y', forceY(CY).strength(0.18))
-    .force('collide', forceCollide((d) => {
-      // Dynamic collision radius scaled with degree
-      // Hub nodes get much more breathing room
-      return 55 + 20 * Math.sqrt(d.degree || 0);
-    }))
-    .stop();
-
-  // Run 250 ticks for stronger convergence
-  for (let i = 0; i < 250; i++) {
-    simulation.tick();
-  }
-
-  // Extract final positions
-  const positions = {};
-  simNodes.forEach((node) => {
-    positions[node.id] = { x: node.x, y: node.y };
   });
 
   return positions;
 }
 
-/**
- * Process a Mistral delta: add nodes to store and recompute layout
- */
+// Kept for API compatibility with RecordButton.jsx
+export function resetLayout() {}
+
 export function processDelta(delta, addGraphDelta, updateNodePositions, existingNodes, existingEdges) {
-  // First add the new nodes/edges to the store
-  addGraphDelta(delta);
+  const newNodes = (delta.nodes_to_add || [])
+    .filter((n) => !existingNodes.some((en) => en.id === n.id))
+    .map((n) => ({
+      id: n.id,
+      data: { label: n.label, level: n.level, parent: n.parent },
+      position: { x: 0, y: 0 },
+    }));
 
-  // Build the full node/edge list after addition
-  const allNodes = [
-    ...existingNodes,
-    ...(delta.nodes_to_add || [])
-      .filter((n) => !existingNodes.some((en) => en.id === n.id))
-      .map((n) => ({
-        id: n.id,
-        data: { label: n.label },
-        position: { x: 0, y: 0 },
-      })),
-  ];
+  const newEdges = (delta.edges_to_add || [])
+    .filter((e) => !existingEdges.some((ee) => ee.id === `${e.source}->${e.target}`))
+    .map((e) => ({
+      id: `${e.source}->${e.target}`,
+      source: e.source,
+      target: e.target,
+      label: e.label,
+    }));
 
-  const allEdges = [
-    ...existingEdges,
-    ...(delta.edges_to_add || [])
-      .filter((e) => !existingEdges.some((ee) => ee.id === `${e.source}->${e.target}`))
-      .map((e) => ({
-        id: `${e.source}->${e.target}`,
-        source: e.source,
-        target: e.target,
-        label: e.label,
-      })),
-  ];
+  const allNodes = [...existingNodes, ...newNodes];
+  const allEdges = [...existingEdges, ...newEdges];
 
-  // Compute new layout
+  // Compute layout BEFORE updating store
   const positions = computeLayout(allNodes, allEdges);
+
+  // Then update store
+  addGraphDelta(delta);
   updateNodePositions(positions);
 }
-

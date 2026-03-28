@@ -10,43 +10,47 @@ const CEREBRAS_MODEL = 'llama-3.3-70b';
 
 function getSystemPrompt(language) {
   const langInstruction = language === 'it'
-    ? 'IMPORTANT: All node labels and edge labels MUST be in Italian. The transcript is in Italian.'
+    ? 'IMPORTANT: All node labels and edge labels MUST be in Italian.'
     : 'All node labels and edge labels must be in English.';
 
-  return `You are an expert knowledge mapper. Your job is to extract concepts and relationships from lecture text and return ONLY the NEW elements to add to an existing knowledge graph.
+  return `You are a knowledge extraction engine. ${langInstruction}
 
-You receive:
-1. The current state of the knowledge graph (existing nodes and edges)
-2. New transcript text that hasn't been analyzed yet
+OUTPUT RULES — follow in order, do not skip:
 
-You must return ONLY the delta — new concepts and new connections. Never repeat existing nodes or edges.
+STEP 1 — Build nodes:
+  - Assign each new node: { "id", "label" (max 4 words), "level" (0/1/2), "parent" }
+  - level 0 = root (only 1, parent: null)
+  - level 1 = category (parent must be root id)
+  - level 2 = detail (parent must be a level-1 id)
+  - No level 3 or deeper.
 
-${langInstruction}
+STEP 2 — Build edges:
+  - For EACH node you created, create EXACTLY ONE edge: { source: node.parent, target: node.id }
+  - The root node gets NO incoming edge.
+  - VALIDATION CHECK: for every edge you write, verify that edge.source === nodes_to_add[edge.target].parent
+  - If the check fails, DELETE that edge. Do not add it.
+  - DO NOT create any other edges. No cross-links, no skip-level links, no sibling links.
 
-RULES:
-- Each node must have a unique "id" (lowercase, snake_case, descriptive) and a "label" (short, clear, max 4 words)
-- Each edge must have "source" and "target" (node ids) and a "label" (relationship description, max 4 words)
-- Do NOT create duplicate nodes — check existing nodes first
-- DEDUPLICATION: If a concept is the same as an existing node but with a slightly different name (e.g. "Giuseppe Parini" vs "Parini", or "Neoclassicismo" vs "Il Neoclassicismo"), do NOT create a new node — use the existing node's id instead.
-- TRANSCRIPTION ERRORS: The transcript may contain speech recognition errors. Correct obvious errors in node labels (e.g. "Virgilio Traccio" should be "Virgilio" if that's the intended reference). Do NOT create nodes from clearly garbled text.
-- QUALITY OVER QUANTITY: Extract only the most significant concepts — main topics, key people, important theories. Skip minor details, examples, and tangential mentions. Maximum 5 new nodes per response.
-- PREFER EDGES: When possible, connect new information to existing nodes via new edges instead of creating new nodes. A rich web of connections is better than many isolated nodes.
-- If a new concept relates to an existing node, create an edge to that existing node's id
-- Keep labels concise and meaningful
-- Return valid JSON only, no text outside the JSON
+STEP 3 — Deduplication:
+  - If a concept already exists in "Existing nodes", reuse its id. Do NOT create it again.
 
-Response format:
+First call (empty graph): create 1 root + 3-5 level-1 + 2-3 level-2 per category. Total 10-16 nodes.
+Subsequent calls: add MAX 4 new nodes as children of existing nodes only.
+
+Return ONLY valid JSON:
 {
   "nodes_to_add": [
-    { "id": "concept_name", "label": "Concept Name" }
+    { "id": "root_id", "label": "Main Topic", "level": 0, "parent": null },
+    { "id": "cat_1", "label": "Category One", "level": 1, "parent": "root_id" },
+    { "id": "det_1a", "label": "Detail A", "level": 2, "parent": "cat_1" }
   ],
   "edges_to_add": [
-    { "source": "node_id_1", "target": "node_id_2", "label": "relates to" }
+    { "source": "root_id", "target": "cat_1", "label": "include" },
+    { "source": "cat_1", "target": "det_1a", "label": "example" }
   ]
 }
 
-If the new text contains no meaningful new concepts, return:
-{ "nodes_to_add": [], "edges_to_add": [] }`;
+If nothing new to add: { "nodes_to_add": [], "edges_to_add": [] }`;
 }
 
 function getSummaryPrompt(language) {

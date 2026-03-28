@@ -6,7 +6,7 @@ import useToastStore from '../store/toastStore';
 import { AudioManager } from '../lib/audioManager';
 import { transcribeAudio } from '../lib/whisperClient';
 import { analyzeText, generateSummary } from '../lib/mistralClient';
-import { processDelta } from '../lib/graphBuilder';
+import { processDelta, resetLayout } from '../lib/graphBuilder';
 
 const ANALYSIS_INTERVAL_MS = 30000; // 30 seconds — faster feedback during demo
 const MIN_TEXT_FOR_ANALYSIS = 40;    // chars
@@ -72,6 +72,7 @@ export default function RecordButton() {
   const handleClick = useCallback(async () => {
     if (status === 'idle') {
       reset();
+      resetLayout();
       setStatus('recording');
       setRecordingStartedAt(Date.now());
 
